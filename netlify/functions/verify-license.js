@@ -1,1 +1,103 @@
+// Verifies a Gumroad license key server-side, so the app's own
+// front-end JavaScript never has to call Gumroad directly (which
+// Gumroad blocks from browsers via CORS).
+//
+// Setup required before this works:
+// 1. In Gumroad, edit your product, turn on "Generate a unique
+//    license key per sale" under Settings, and copy the "product_id"
+//    field shown there. NOTE: this must be product_id, not the
+//    permalink from the product's URL -- Gumroad requires product_id
+//    for any product created from January 2023 onward.
+// 2. In your Netlify site: Site settings -> Environment variables,
+//    add GUMROAD_PRODUCT_ID = that product_id value.
+// 3. Deploy this file at netlify/functions/verify-license.js
+//    (Netlify auto-detects and deploys anything in that folder).
 
+exports.handler = async function (event) {
+  if (event.httpMethod !== 'POST') {
+    return {
+      statusCode: 405,
+      body: JSON.stringify({ valid: false, message: 'Method not allowed' })
+    };
+  }
+
+  let licenseKey;
+  try {
+    const body = JSON.parse(event.body || '{}');
+    licenseKey = (body.licenseKey || '').trim();
+  } catch (e) {
+    return {
+      statusCode: 400,
+      body: JSON.stringify({ valid: false, message: 'Invalid request body' })
+    };
+  }
+
+  if (!licenseKey) {
+    return {
+      statusCode: 400,
+      body: JSON.stringify({ valid: false, message: 'A license key is required.' })
+    };
+  }
+
+  const PRODUCT_ID = process.env.GUMROAD_PRODUCT_ID;
+  if (!PRODUCT_ID) {
+    return {
+      statusCode: 500,
+      body: JSON.stringify({
+        valid: false,
+        message: 'Server is missing GUMROAD_PRODUCT_ID. Set it in Netlify environment variables.'
+      })
+    };
+  }
+
+  try {
+    const params = new URLSearchParams();
+    params.append('product_id', PRODUCT_ID);
+    params.append('license_key', licenseKey);
+    // Set to 'true' if you want Gumroad to count/limit how many times
+    // this key has been checked (useful for capping device activations).
+    params.append('increment_uses_count', 'false');
+
+    const resp = await fetch('https://api.gumroad.com/v2/licenses/verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: params.toString()
+    });
+    const data = await resp.json();
+
+    if (data && data.success) {
+      // Optional extra checks you may want to add later:
+      // - data.purchase.refunded / data.purchase.chargebacked -> treat as invalid
+      // - data.purchase.subscription_cancelled_at -> treat as invalid for subscriptions
+      return { statusCode: 200, body: JSON.stringify({ valid: true }) };
+    }
+
+    // TEMPORARY DEBUG MODE: show exactly what Gumroad sent back, plus
+    // what we sent to Gumroad (product_id partially masked), so we can
+    // see the real cause instead of guessing. Remove this once things
+    // are working -- see the shorter version commented out below.
+    const maskedProductId = PRODUCT_ID.length > 6
+      ? PRODUCT_ID.slice(0, 3) + '...' + PRODUCT_ID.slice(-3) + ' (' + PRODUCT_ID.length + ' chars)'
+      : PRODUCT_ID + ' (' + PRODUCT_ID.length + ' chars)';
+    return {
+      statusCode: 200,
+      body: JSON.stringify({
+        valid: false,
+        message: 'DEBUG â Gumroad said: ' + JSON.stringify(data) +
+          ' | We sent product_id=' + maskedProductId +
+          ' and license_key length=' + licenseKey.length
+      })
+    };
+
+    // Once this is working, replace the block above with:
+    // return {
+    //   statusCode: 200,
+    //   body: JSON.stringify({ valid: false, message: (data && data.message) || 'License key not recognized.' })
+    // };
+  } catch (err) {
+    return {
+      statusCode: 502,
+      body: JSON.stringify({ valid: false, message: 'Could not reach the license verification service. Please try again shortly.' })
+    };
+  }
+};
