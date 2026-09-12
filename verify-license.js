@@ -3,11 +3,13 @@
 // Gumroad blocks from browsers via CORS).
 //
 // Setup required before this works:
-// 1. In Gumroad, create your product with "Generate a unique license
-//    key per sale" turned on, and note its permalink (the short code
-//    in the product's URL).
+// 1. In Gumroad, edit your product, turn on "Generate a unique
+//    license key per sale" under Settings, and copy the "product_id"
+//    field shown there. NOTE: this must be product_id, not the
+//    permalink from the product's URL -- Gumroad requires product_id
+//    for any product created from January 2023 onward.
 // 2. In your Netlify site: Site settings -> Environment variables,
-//    add GUMROAD_PRODUCT_PERMALINK = that permalink.
+//    add GUMROAD_PRODUCT_ID = that product_id value.
 // 3. Deploy this file at netlify/functions/verify-license.js
 //    (Netlify auto-detects and deploys anything in that folder).
 
@@ -37,20 +39,20 @@ exports.handler = async function (event) {
     };
   }
 
-  const PRODUCT_PERMALINK = process.env.GUMROAD_PRODUCT_PERMALINK;
-  if (!PRODUCT_PERMALINK) {
+  const PRODUCT_ID = process.env.GUMROAD_PRODUCT_ID;
+  if (!PRODUCT_ID) {
     return {
       statusCode: 500,
       body: JSON.stringify({
         valid: false,
-        message: 'Server is missing GUMROAD_PRODUCT_PERMALINK. Set it in Netlify environment variables.'
+        message: 'Server is missing GUMROAD_PRODUCT_ID. Set it in Netlify environment variables.'
       })
     };
   }
 
   try {
     const params = new URLSearchParams();
-    params.append('product_permalink', PRODUCT_PERMALINK);
+    params.append('product_id', PRODUCT_ID);
     params.append('license_key', licenseKey);
     // Set to 'true' if you want Gumroad to count/limit how many times
     // this key has been checked (useful for capping device activations).
