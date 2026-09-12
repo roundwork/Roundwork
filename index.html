@@ -491,7 +491,7 @@ function normalizeRecoveryCode(input){
 const CRYPTO_AVAILABLE = !!(window.crypto && window.crypto.subtle && window.crypto.subtle.importKey);
 
 /* ================= Boot / auth ================= */
-const PAYMENT_LINK_URL = "https://roundwork.gumroad.com/l/Subscription"; // TODO: replace with your real Gumroad (or other) checkout links
+const PAYMENT_LINK_URL = "https://therapistprime.gumroad.com/l/Roundwork";
 
 async function boot(){
   let paywallPassed = false;
@@ -807,7 +807,7 @@ function renderPaywallScreen(){
     <div class="field"><label>License key (emailed to you after purchase)</label><input type="text" id="license_input" name="rw-field-license" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Paste your license key here"></div>
     ${state.authError ? `<div class="auth-error">${escapeHtml(state.authError)}</div>` : ''}
     <button class="btn full" id="paywallVerifyBtn" ${state.authBusy?'disabled':''}>${state.authBusy?(state.authStep||'Verifying…'):'Verify & continue'}</button>
-    <div class="auth-note">Your license key is checked once, here, before you can set up your passphrase — it isn't stored on any server afterward. If you have any trouble, contact [insert your support email here].</div>
+    <div class="auth-note">Your license key is checked once, here, before you can set up your passphrase — it isn't stored on any server afterward. If you have any trouble, contact support@primarytherapy.co.uk.</div>
   </div></div>`;
 }
 function renderSetupScreen(){
