@@ -72,10 +72,28 @@ exports.handler = async function (event) {
       return { statusCode: 200, body: JSON.stringify({ valid: true }) };
     }
 
+    // TEMPORARY DEBUG MODE: show exactly what Gumroad sent back, plus
+    // what we sent to Gumroad (product_id partially masked), so we can
+    // see the real cause instead of guessing. Remove this once things
+    // are working -- see the shorter version commented out below.
+    const maskedProductId = PRODUCT_ID.length > 6
+      ? PRODUCT_ID.slice(0, 3) + '...' + PRODUCT_ID.slice(-3) + ' (' + PRODUCT_ID.length + ' chars)'
+      : PRODUCT_ID + ' (' + PRODUCT_ID.length + ' chars)';
     return {
       statusCode: 200,
-      body: JSON.stringify({ valid: false, message: (data && data.message) || 'License key not recognized.' })
+      body: JSON.stringify({
+        valid: false,
+        message: 'DEBUG â Gumroad said: ' + JSON.stringify(data) +
+          ' | We sent product_id=' + maskedProductId +
+          ' and license_key length=' + licenseKey.length
+      })
     };
+
+    // Once this is working, replace the block above with:
+    // return {
+    //   statusCode: 200,
+    //   body: JSON.stringify({ valid: false, message: (data && data.message) || 'License key not recognized.' })
+    // };
   } catch (err) {
     return {
       statusCode: 502,
