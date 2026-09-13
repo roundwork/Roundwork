@@ -294,11 +294,34 @@ function showFatalBanner(msg){
   }
   el.textContent = 'Roundwork hit a problem: ' + msg;
 }
-window.addEventListener('error', (e)=>{ showFatalBanner((e && e.message) ? e.message : 'unknown script error'); });
+window.addEventListener('error', (e)=>{
+  // Browsers deliberately strip all detail from errors originating in a
+  // cross-origin or opaque-response context (a bare "Script error." with
+  // no filename/line number) -- this is a browser privacy protection, not
+  // a description of a real bug, and there's nothing actionable to show
+  // the user for it. Log it quietly for our own diagnostics instead of
+  // alarming a real customer with an unhelpful banner.
+  const isOpaque = e && e.message === 'Script error.' && !e.filename;
+  if(isOpaque){
+    console.warn('Suppressed opaque cross-origin error (no detail available from browser):', e);
+    return;
+  }
+  showFatalBanner((e && e.message) ? e.message : 'unknown script error');
+});
 window.addEventListener('unhandledrejection', (e)=>{
   const reason = e && e.reason;
   showFatalBanner(reason && reason.message ? reason.message : String(reason));
 });
+// Surface any errors happening inside the service worker itself (a separate
+// execution context we can't see directly) so they're at least visible in
+// the console for real debugging, without alarming the user unnecessarily.
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.addEventListener('message', (event)=>{
+    if(event.data && event.data.type === 'sw-error'){
+      console.error('Service worker reported an internal error:', event.data.detail);
+    }
+  });
+}
 function withTimeout(promise, ms, label){
   return Promise.race([
     promise,
