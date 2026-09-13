@@ -775,6 +775,36 @@ async function bootAppData(){
   try{ await migrateNextSessions(); }catch(e){ console.error('Migration failed', e); }
   resetIdleTimer();
   render();
+  maybeShowInstallTip();
+}
+
+async function maybeShowInstallTip(){
+  try{
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+    if(isStandalone) return; // already installed/running as an app -- nothing to suggest
+    const already = await storageGet('pwa_tip_shown');
+    if(already) return;
+  }catch(e){ return; } // if we can't tell either way, don't risk nagging
+
+  const ua = navigator.userAgent || '';
+  const isIOS = /iPad|iPhone|iPod/.test(ua);
+  const isAndroid = /Android/.test(ua);
+  let msg;
+  if(isIOS) msg = 'Tip: tap the Share icon, then "Add to Home Screen" to use Roundwork like an app.';
+  else if(isAndroid) msg = 'Tip: tap the menu (⋮) and choose "Install app" to use Roundwork like an app.';
+  else msg = "Tip: look for an install icon in your browser's address bar to add Roundwork as an app.";
+
+  const el = document.createElement('div');
+  el.id = 'installTipBanner';
+  el.style.cssText = 'position:fixed; bottom:90px; left:16px; right:16px; max-width:420px; margin:0 auto; background:#234F47; color:#fff; padding:12px 14px; border-radius:10px; font-size:0.85rem; line-height:1.4; z-index:500; box-shadow:0 6px 18px rgba(0,0,0,0.25); display:flex; align-items:center; gap:10px;';
+  el.innerHTML = `<span style="flex:1;">${escapeHtml(msg)}</span><button id="installTipClose" style="background:none; border:none; color:#fff; font-size:1.1rem; cursor:pointer; line-height:1; padding:2px 6px;">✕</button>`;
+  document.body.appendChild(el);
+  const closeBtn = document.getElementById('installTipClose');
+  if(closeBtn) closeBtn.addEventListener('click', () => { el.remove(); });
+
+  // Mark as shown right away (not just on dismiss) -- this is meant to be a
+  // one-time tip, not a recurring nag every time the app is opened.
+  try{ await storageSet('pwa_tip_shown', 'true', false); }catch(e){}
 }
 
 async function migrateNextSessions(){
