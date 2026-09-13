@@ -227,6 +227,12 @@
   ::-webkit-scrollbar{ width:8px; }
   ::-webkit-scrollbar-thumb{ background:#C8D3CD; border-radius:8px; }
 </style>
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#234F47">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Roundwork">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
 </head>
 <body>
 <div id="app"></div>
@@ -1870,6 +1876,16 @@ async function openClient(id){
   state.clientTab = 'notes';
   await loadNotes(id);
   goto('client', { clientId: id, clientTab:'notes' });
+}
+
+/* ================= Boot ================= */
+/* ================= PWA: service worker registration ================= */
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch((e) => {
+      console.warn('Service worker registration failed (app still works normally):', e);
+    });
+  });
 }
 
 /* ================= Boot ================= */
